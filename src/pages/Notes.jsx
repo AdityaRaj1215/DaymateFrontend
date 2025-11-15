@@ -4,6 +4,8 @@ import Button from '../components/Button'
 import LoadingSpinner from '../components/LoadingSpinner'
 import Modal from '../components/Modal'
 import NavMenu from '../components/NavMenu'
+import { notesService } from '../services/notes'
+import { remindersService } from '../services/reminders'
 
 const Notes = ({ user, onLogout }) => {
   const [items, setItems] = useState([]) // Combined notes and reminders
@@ -18,33 +20,32 @@ const Notes = ({ user, onLogout }) => {
   const [isCreatingReminder, setIsCreatingReminder] = useState(false)
 
   useEffect(() => {
-    // Load notes and reminders from localStorage
-    const savedNotes = localStorage.getItem('notes')
-    const savedReminders = localStorage.getItem('reminders')
-    
-    const notes = savedNotes ? JSON.parse(savedNotes) : []
-    const reminders = savedReminders ? JSON.parse(savedReminders) : []
-    
-    // Combine and sort by creation date
-    const allItems = [...notes, ...reminders].sort((a, b) => 
-      new Date(b.createdAt || b.reminderDate) - new Date(a.createdAt || a.reminderDate)
-    )
-    
-    setItems(allItems)
-    setLoading(false)
+    loadItems()
   }, [])
 
-  const saveItems = (updatedItems, type) => {
-    const notes = updatedItems.filter(item => item.type === 'note' || !item.type)
-    const reminders = updatedItems.filter(item => item.type === 'reminder')
-    
-    localStorage.setItem('notes', JSON.stringify(notes))
-    localStorage.setItem('reminders', JSON.stringify(reminders))
-    
-    const allItems = [...notes, ...reminders].sort((a, b) => 
-      new Date(b.createdAt || b.reminderDate) - new Date(a.createdAt || a.reminderDate)
-    )
-    setItems(allItems)
+  const loadItems = async () => {
+    setLoading(true)
+    try {
+      const [notesResult, remindersResult] = await Promise.all([
+        notesService.getAll(),
+        remindersService.getAll()
+      ])
+      
+      const notes = notesResult.success ? notesResult.data.map(n => ({ ...n, type: 'note' })) : []
+      const reminders = remindersResult.success ? remindersResult.data.map(r => ({ ...r, type: 'reminder' })) : []
+      
+      // Combine and sort by creation date
+      const allItems = [...notes, ...reminders].sort((a, b) => 
+        new Date(b.createdAt || b.reminderDate) - new Date(a.createdAt || a.reminderDate)
+      )
+      
+      setItems(allItems)
+    } catch (error) {
+      console.error('Error loading items:', error)
+      setItems([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleCreateNote = () => {
@@ -79,67 +80,102 @@ const Notes = ({ user, onLogout }) => {
     setIsEditing(false)
   }
 
-  const handleSaveItem = () => {
+  const handleSaveItem = async () => {
     if (!itemTitle.trim()) return
 
-    let updatedItems
     const isReminder = isCreatingReminder || selectedItem?.type === 'reminder'
     
-    if (selectedItem) {
-      // Update existing item
-      updatedItems = items.map(item => {
-        if (item.id === selectedItem.id) {
-          return {
-            ...item,
-            title: itemTitle,
-            content: itemContent,
-            type: isReminder ? 'reminder' : 'note',
-            reminderDate: isReminder ? reminderDate : undefined,
-            reminderTime: isReminder ? reminderTime : undefined,
-            updatedAt: new Date().toISOString()
-          }
+    try {
+      if (selectedItem) {
+        // Update existing item
+        const updateData = {
+          title: itemTitle,
+          content: itemContent
         }
-        return item
-      })
-    } else {
-      // Create new item
-      const newItem = {
-        id: Date.now(),
-        title: itemTitle,
-        content: itemContent,
-        type: isReminder ? 'reminder' : 'note',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        
+        if (isReminder) {
+          updateData.reminderDate = reminderDate
+          updateData.reminderTime = reminderTime
+        }
+        
+        const result = isReminder 
+          ? await remindersService.update(selectedItem.id, updateData)
+          : await notesService.update(selectedItem.id, updateData)
+        
+        if (result.success) {
+          const updatedItem = { ...result.data, type: isReminder ? 'reminder' : 'note' }
+          setItems(items.map(item => item.id === selectedItem.id ? updatedItem : item))
+          setIsEditing(false)
+          setSelectedItem(null)
+          setItemTitle('')
+          setItemContent('')
+          setReminderDate('')
+          setReminderTime('')
+          setIsCreatingReminder(false)
+        } else {
+          alert('Failed to update. Please try again.')
+        }
+      } else {
+        // Create new item
+        const createData = {
+          title: itemTitle,
+          content: itemContent
+        }
+        
+        if (isReminder) {
+          createData.reminderDate = reminderDate
+          createData.reminderTime = reminderTime
+        }
+        
+        const result = isReminder
+          ? await remindersService.create(createData)
+          : await notesService.create(createData)
+        
+        if (result.success) {
+          const newItem = { ...result.data, type: isReminder ? 'reminder' : 'note' }
+          setItems([newItem, ...items])
+          setIsEditing(false)
+          setSelectedItem(null)
+          setItemTitle('')
+          setItemContent('')
+          setReminderDate('')
+          setReminderTime('')
+          setIsCreatingReminder(false)
+        } else {
+          alert('Failed to create. Please try again.')
+        }
       }
-      
-      if (isReminder) {
-        newItem.reminderDate = reminderDate
-        newItem.reminderTime = reminderTime
-      }
-      
-      updatedItems = [...items, newItem]
+    } catch (error) {
+      console.error('Error saving item:', error)
+      alert('An error occurred. Please try again.')
     }
-
-    saveItems(updatedItems)
-    setIsEditing(false)
-    setSelectedItem(null)
-    setItemTitle('')
-    setItemContent('')
-    setReminderDate('')
-    setReminderTime('')
-    setIsCreatingReminder(false)
   }
 
-  const handleDeleteItem = (id) => {
-    const updatedItems = items.filter(item => item.id !== id)
-    saveItems(updatedItems)
-    if (selectedItem && selectedItem.id === id) {
-      setSelectedItem(null)
-      setItemTitle('')
-      setItemContent('')
-      setReminderDate('')
-      setReminderTime('')
-      setIsEditing(false)
+  const handleDeleteItem = async (id) => {
+    const item = items.find(i => i.id === id)
+    if (!item) return
+
+    try {
+      const result = item.type === 'reminder'
+        ? await remindersService.delete(id)
+        : await notesService.delete(id)
+      
+      if (result.success) {
+        setItems(items.filter(i => i.id !== id))
+        if (selectedItem && selectedItem.id === id) {
+          setSelectedItem(null)
+          setItemTitle('')
+          setItemContent('')
+          setReminderDate('')
+          setReminderTime('')
+          setIsEditing(false)
+        }
+      } else {
+        alert('Failed to delete. Please try again.')
+      }
+    } catch (error) {
+      console.error('Error deleting item:', error)
+      alert('An error occurred. Please try again.')
     }
   }
 

@@ -4,6 +4,7 @@ import Card from '../components/Card'
 import Input from '../components/Input'
 import Button from '../components/Button'
 import { isValidEmail } from '../utils/helpers'
+import { authService } from '../services/auth'
 
 const Register = ({ onLogin }) => {
   const navigate = useNavigate()
@@ -49,19 +50,28 @@ const Register = ({ onLogin }) => {
     }
 
     setLoading(true)
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false)
-      // Store user data
-      const userData = {
-        email: formData.email,
-        name: formData.name,
-        loggedIn: true
+    
+    try {
+      const result = await authService.register(formData.name, formData.email, formData.password)
+      
+      if (result.success) {
+        // Store user data for compatibility
+        const userData = result.data.user || {
+          email: formData.email,
+          name: formData.name,
+          loggedIn: true
+        }
+        localStorage.setItem('user', JSON.stringify(userData))
+        onLogin(userData)
+        navigate('/tasks')
+      } else {
+        setErrors({ general: result.error || 'Registration failed. Please try again.' })
       }
-      localStorage.setItem('user', JSON.stringify(userData))
-      onLogin(userData)
-      navigate('/tasks')
-    }, 1000)
+    } catch (error) {
+      setErrors({ general: error.message || 'An error occurred. Please try again.' })
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -72,6 +82,12 @@ const Register = ({ onLogin }) => {
           <p className="text-cursor-text-muted text-center mb-6">Create your Daymate account</p>
           
           <form onSubmit={handleSubmit}>
+            {errors.general && (
+              <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-md text-red-400 text-sm">
+                {errors.general}
+              </div>
+            )}
+            
             <Input
               label="Name"
               name="name"

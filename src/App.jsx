@@ -13,10 +13,12 @@ function App() {
   useEffect(() => {
     // Check if user is logged in
     const savedUser = localStorage.getItem('user')
-    if (savedUser) {
+    const token = localStorage.getItem('user_token')
+    
+    if (savedUser && token) {
       try {
         const userData = JSON.parse(savedUser)
-        if (userData.loggedIn) {
+        if (userData.loggedIn || token) {
           setUser(userData)
         }
       } catch (error) {
@@ -33,6 +35,8 @@ function App() {
   const handleLogout = () => {
     setUser(null)
     localStorage.removeItem('user')
+    localStorage.removeItem('user_token')
+    localStorage.removeItem('user_data')
   }
 
   // Protected Route Component

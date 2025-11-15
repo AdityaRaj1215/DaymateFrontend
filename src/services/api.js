@@ -21,14 +21,28 @@ const apiRequest = async (endpoint, options = {}) => {
   try {
     const response = await fetch(url, config)
     
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
+    // Handle non-JSON responses
+    const contentType = response.headers.get('content-type')
+    if (!contentType || !contentType.includes('application/json')) {
+      if (!response.ok) {
+        return { data: null, error: `HTTP error! status: ${response.status}` }
+      }
+      return { data: null, error: null }
     }
     
     const data = await response.json()
+    
+    if (!response.ok) {
+      // Handle API error responses
+      return { 
+        data: null, 
+        error: data.message || data.error || `HTTP error! status: ${response.status}` 
+      }
+    }
+    
     return { data, error: null }
   } catch (error) {
-    return { data: null, error: error.message }
+    return { data: null, error: error.message || 'Network error occurred' }
   }
 }
 

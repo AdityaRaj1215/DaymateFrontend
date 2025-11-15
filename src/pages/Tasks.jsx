@@ -3,6 +3,7 @@ import Card from '../components/Card'
 import Button from '../components/Button'
 import LoadingSpinner from '../components/LoadingSpinner'
 import NavMenu from '../components/NavMenu'
+import { tasksService } from '../services/tasks'
 
 const Tasks = ({ user, onLogout }) => {
   const [tasks, setTasks] = useState([])
@@ -10,43 +11,81 @@ const Tasks = ({ user, onLogout }) => {
   const [newTask, setNewTask] = useState('')
 
   useEffect(() => {
-    // Load tasks from localStorage
-    const savedTasks = localStorage.getItem('tasks')
-    if (savedTasks) {
-      setTasks(JSON.parse(savedTasks))
-    }
-    setLoading(false)
+    loadTasks()
   }, [])
 
-  const saveTasks = (updatedTasks) => {
-    setTasks(updatedTasks)
-    localStorage.setItem('tasks', JSON.stringify(updatedTasks))
-  }
-
-  const handleAddTask = (e) => {
-    e.preventDefault()
-    if (newTask.trim()) {
-      const task = {
-        id: Date.now(),
-        text: newTask.trim(),
-        completed: false,
-        createdAt: new Date().toISOString()
+  const loadTasks = async () => {
+    setLoading(true)
+    try {
+      const result = await tasksService.getAll()
+      if (result.success) {
+        setTasks(result.data || [])
+      } else {
+        console.error('Failed to load tasks:', result.error)
+        // Fallback to empty array
+        setTasks([])
       }
-      saveTasks([...tasks, task])
-      setNewTask('')
+    } catch (error) {
+      console.error('Error loading tasks:', error)
+      setTasks([])
+    } finally {
+      setLoading(false)
     }
   }
 
-  const handleToggleTask = (id) => {
-    const updatedTasks = tasks.map(task =>
-      task.id === id ? { ...task, completed: !task.completed } : task
-    )
-    saveTasks(updatedTasks)
+  const handleAddTask = async (e) => {
+    e.preventDefault()
+    if (!newTask.trim()) return
+
+    const taskData = {
+      text: newTask.trim(),
+      completed: false
+    }
+
+    try {
+      const result = await tasksService.create(taskData)
+      if (result.success) {
+        setTasks([...tasks, result.data])
+        setNewTask('')
+      } else {
+        console.error('Failed to create task:', result.error)
+        alert('Failed to create task. Please try again.')
+      }
+    } catch (error) {
+      console.error('Error creating task:', error)
+      alert('An error occurred. Please try again.')
+    }
   }
 
-  const handleDeleteTask = (id) => {
-    const updatedTasks = tasks.filter(task => task.id !== id)
-    saveTasks(updatedTasks)
+  const handleToggleTask = async (id) => {
+    const task = tasks.find(t => t.id === id)
+    if (!task) return
+
+    try {
+      const result = await tasksService.update(id, { completed: !task.completed })
+      if (result.success) {
+        setTasks(tasks.map(t => t.id === id ? result.data : t))
+      } else {
+        console.error('Failed to update task:', result.error)
+      }
+    } catch (error) {
+      console.error('Error updating task:', error)
+    }
+  }
+
+  const handleDeleteTask = async (id) => {
+    try {
+      const result = await tasksService.delete(id)
+      if (result.success) {
+        setTasks(tasks.filter(t => t.id !== id))
+      } else {
+        console.error('Failed to delete task:', result.error)
+        alert('Failed to delete task. Please try again.')
+      }
+    } catch (error) {
+      console.error('Error deleting task:', error)
+      alert('An error occurred. Please try again.')
+    }
   }
 
   if (loading) {

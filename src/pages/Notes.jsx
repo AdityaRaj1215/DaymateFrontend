@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import Card from '../components/Card'
 import Button from '../components/Button'
 import LoadingSpinner from '../components/LoadingSpinner'
 import Modal from '../components/Modal'
+import NavMenu from '../components/NavMenu'
 
 const Notes = ({ user, onLogout }) => {
-  const navigate = useNavigate()
   const [items, setItems] = useState([]) // Combined notes and reminders
   const [loading, setLoading] = useState(true)
   const [selectedItem, setSelectedItem] = useState(null)
@@ -187,24 +186,7 @@ const Notes = ({ user, onLogout }) => {
             <h1 className="text-3xl font-bold text-cursor-text">Notes & Reminders</h1>
             <p className="text-cursor-text-muted">Your personal notes and reminders</p>
           </div>
-          <div className="flex gap-3">
-            <Button
-              variant="primary"
-              onClick={() => navigate('/tasks')}
-            >
-              Tasks
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => {
-                localStorage.removeItem('user')
-                onLogout()
-                navigate('/')
-              }}
-            >
-              Logout
-            </Button>
-          </div>
+          <NavMenu onLogout={onLogout} />
         </div>
 
         {/* Square Cards Grid */}

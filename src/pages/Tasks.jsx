@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import Card from '../components/Card'
 import Button from '../components/Button'
 import LoadingSpinner from '../components/LoadingSpinner'
+import NavMenu from '../components/NavMenu'
 
 const Tasks = ({ user, onLogout }) => {
-  const navigate = useNavigate()
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
   const [newTask, setNewTask] = useState('')
@@ -67,24 +66,7 @@ const Tasks = ({ user, onLogout }) => {
             <h1 className="text-3xl font-bold text-cursor-text">Tasks</h1>
             <p className="text-cursor-text-muted">Welcome back, {user?.name || 'User'}</p>
           </div>
-          <div className="flex gap-3">
-            <Button
-              variant="primary"
-              onClick={() => navigate('/notes')}
-            >
-              Notes
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => {
-                localStorage.removeItem('user')
-                onLogout()
-                navigate('/')
-              }}
-            >
-              Logout
-            </Button>
-          </div>
+          <NavMenu onLogout={onLogout} />
         </div>
 
         {/* Add Task Form */}

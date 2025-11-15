@@ -8,7 +8,7 @@ The base URL is configured in `.env` file as `VITE_API_BASE_URL` (default: `http
 ## Authentication
 
 ### POST /auth/register
-Register a new user.
+Register a new user. yes
 
 **Request Body:**
 ```json

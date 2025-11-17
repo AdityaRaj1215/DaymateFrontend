@@ -27,15 +27,13 @@ export const authService = {
       return { success: false, error: response.error }
     }
     
-    // Store token and user data
-    if (response.data.token) {
-      localStorage.setItem(STORAGE_KEYS.USER_TOKEN, response.data.token)
-    }
-    if (response.data.user) {
-      localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(response.data.user))
+    // Register returns user object directly (no token)
+    // User needs to login after registration to get token
+    if (response.data) {
+      localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(response.data))
     }
     
-    return { success: true, data: response.data }
+    return { success: true, data: { user: response.data } }
   },
 
   // Logout

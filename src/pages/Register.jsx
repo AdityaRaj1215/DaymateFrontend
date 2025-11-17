@@ -55,15 +55,25 @@ const Register = ({ onLogin }) => {
       const result = await authService.register(formData.name, formData.email, formData.password)
       
       if (result.success) {
-        // Store user data for compatibility
-        const userData = result.data.user || {
-          email: formData.email,
-          name: formData.name,
-          loggedIn: true
+        // After registration, automatically login to get token
+        const loginResult = await authService.login(formData.email, formData.password)
+        
+        if (loginResult.success) {
+          const userData = loginResult.data.user || result.data.user || {
+            email: formData.email,
+            name: formData.name,
+            loggedIn: true
+          }
+          localStorage.setItem('user', JSON.stringify(userData))
+          onLogin(userData)
+          navigate('/tasks')
+        } else {
+          // Registration succeeded but login failed - redirect to login page
+          setErrors({ general: 'Registration successful! Please login.' })
+          setTimeout(() => {
+            navigate('/login')
+          }, 2000)
         }
-        localStorage.setItem('user', JSON.stringify(userData))
-        onLogin(userData)
-        navigate('/tasks')
       } else {
         setErrors({ general: result.error || 'Registration failed. Please try again.' })
       }

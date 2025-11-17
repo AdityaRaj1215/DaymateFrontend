@@ -9,14 +9,16 @@ import { tasksService } from '../services/tasks'
 const Tasks = ({ user, onLogout }) => {
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
-  const [newTask, setNewTask] = useState('')
-  const [newDeadlineDate, setNewDeadlineDate] = useState('')
-  const [newDeadlineTime, setNewDeadlineTime] = useState('')
+  const [newTitle, setNewTitle] = useState('')
+  const [newDescription, setNewDescription] = useState('')
+  const [newDueDate, setNewDueDate] = useState('')
+  const [newUrgency, setNewUrgency] = useState('MEDIUM')
 
   const [editingTask, setEditingTask] = useState(null)
-  const [editText, setEditText] = useState('')
-  const [editDeadlineDate, setEditDeadlineDate] = useState('')
-  const [editDeadlineTime, setEditDeadlineTime] = useState('')
+  const [editTitle, setEditTitle] = useState('')
+  const [editDescription, setEditDescription] = useState('')
+  const [editDueDate, setEditDueDate] = useState('')
+  const [editUrgency, setEditUrgency] = useState('MEDIUM')
 
   useEffect(() => {
     loadTasks()
@@ -30,7 +32,6 @@ const Tasks = ({ user, onLogout }) => {
         setTasks(result.data || [])
       } else {
         console.error('Failed to load tasks:', result.error)
-        // Fallback to empty array
         setTasks([])
       }
     } catch (error) {
@@ -41,24 +42,56 @@ const Tasks = ({ user, onLogout }) => {
     }
   }
 
+  // Convert ISO date to local date-time inputs
+  const formatDateForInput = (isoDate) => {
+    if (!isoDate) return ''
+    const date = new Date(isoDate)
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    return `${year}-${month}-${day}T${hours}:${minutes}`
+  }
+
+  // Convert date-time input to ISO format
+  const formatDateToISO = (dateTimeString) => {
+    if (!dateTimeString) return null
+    return new Date(dateTimeString).toISOString()
+  }
+
+  // Format date for display
+  const formatDateForDisplay = (isoDate) => {
+    if (!isoDate) return 'No deadline'
+    const date = new Date(isoDate)
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
   const handleAddTask = async (e) => {
     e.preventDefault()
-    if (!newTask.trim()) return
+    if (!newTitle.trim()) return
 
     const taskData = {
-      text: newTask.trim(),
-      completed: false,
-      deadlineDate: newDeadlineDate || null,
-      deadlineTime: newDeadlineTime || null,
+      title: newTitle.trim(),
+      description: newDescription.trim() || null,
+      dueDate: formatDateToISO(newDueDate),
+      urgency: newUrgency || 'MEDIUM'
     }
 
     try {
       const result = await tasksService.create(taskData)
       if (result.success) {
         setTasks([...tasks, result.data])
-        setNewTask('')
-        setNewDeadlineDate('')
-        setNewDeadlineTime('')
+        setNewTitle('')
+        setNewDescription('')
+        setNewDueDate('')
+        setNewUrgency('MEDIUM')
       } else {
         console.error('Failed to create task:', result.error)
         alert('Failed to create task. Please try again.')
@@ -74,7 +107,7 @@ const Tasks = ({ user, onLogout }) => {
     if (!task) return
 
     try {
-      const result = await tasksService.update(id, { completed: !task.completed })
+      const result = await tasksService.complete(id)
       if (result.success) {
         setTasks(tasks.map(t => t.id === id ? result.data : t))
       } else {
@@ -102,26 +135,28 @@ const Tasks = ({ user, onLogout }) => {
 
   const handleOpenEdit = (task) => {
     setEditingTask(task)
-    setEditText(task.text || '')
-    setEditDeadlineDate(task.deadlineDate || '')
-    setEditDeadlineTime(task.deadlineTime || '')
+    setEditTitle(task.title || '')
+    setEditDescription(task.description || '')
+    setEditDueDate(formatDateForInput(task.dueDate))
+    setEditUrgency(task.urgency || 'MEDIUM')
   }
 
   const handleCancelEdit = () => {
     setEditingTask(null)
-    setEditText('')
-    setEditDeadlineDate('')
-    setEditDeadlineTime('')
+    setEditTitle('')
+    setEditDescription('')
+    setEditDueDate('')
+    setEditUrgency('MEDIUM')
   }
 
   const handleSaveEdit = async () => {
-    if (!editingTask) return
+    if (!editingTask || !editTitle.trim()) return
 
     const updateData = {
-      text: editText,
-      completed: editingTask.completed,
-      deadlineDate: editDeadlineDate || null,
-      deadlineTime: editDeadlineTime || null,
+      title: editTitle.trim(),
+      description: editDescription.trim() || null,
+      dueDate: formatDateToISO(editDueDate),
+      urgency: editUrgency || 'MEDIUM'
     }
 
     try {
@@ -135,6 +170,19 @@ const Tasks = ({ user, onLogout }) => {
     } catch (error) {
       console.error('Error updating task:', error)
       alert('An error occurred. Please try again.')
+    }
+  }
+
+  const getUrgencyColor = (urgency) => {
+    switch (urgency) {
+      case 'HIGH':
+        return 'text-red-400'
+      case 'MEDIUM':
+        return 'text-yellow-400'
+      case 'LOW':
+        return 'text-green-400'
+      default:
+        return 'text-cursor-text-muted'
     }
   }
 
@@ -160,29 +208,48 @@ const Tasks = ({ user, onLogout }) => {
 
         {/* Add Task Form */}
         <Card className="mb-6">
-          <form onSubmit={handleAddTask} className="flex flex-col md:flex-row gap-3">
-            <input
-              type="text"
-              value={newTask}
-              onChange={(e) => setNewTask(e.target.value)}
-              placeholder="Add a new task..."
-              className="flex-1 px-4 py-2 bg-cursor-bg border border-cursor-border rounded-md text-cursor-text placeholder-cursor-text-muted focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-            <div className="flex flex-col sm:flex-row gap-3 md:w-auto">
+          <form onSubmit={handleAddTask} className="space-y-4">
+            <div>
               <input
-                type="date"
-                value={newDeadlineDate}
-                onChange={(e) => setNewDeadlineDate(e.target.value)}
-                className="px-3 py-2 bg-cursor-bg border border-cursor-border rounded-md text-cursor-text focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-              <input
-                type="time"
-                value={newDeadlineTime}
-                onChange={(e) => setNewDeadlineTime(e.target.value)}
-                className="px-3 py-2 bg-cursor-bg border border-cursor-border rounded-md text-cursor-text focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                type="text"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder="Task title (required)"
+                className="w-full px-4 py-2 bg-cursor-bg border border-cursor-border rounded-md text-cursor-text placeholder-cursor-text-muted focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
               />
             </div>
-            <Button type="submit" variant="primary">
+            <div>
+              <textarea
+                value={newDescription}
+                onChange={(e) => setNewDescription(e.target.value)}
+                placeholder="Description (optional)"
+                rows={2}
+                className="w-full px-4 py-2 bg-cursor-bg border border-cursor-border rounded-md text-cursor-text placeholder-cursor-text-muted focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <input
+                  type="datetime-local"
+                  value={newDueDate}
+                  onChange={(e) => setNewDueDate(e.target.value)}
+                  className="w-full px-3 py-2 bg-cursor-bg border border-cursor-border rounded-md text-cursor-text focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <select
+                  value={newUrgency}
+                  onChange={(e) => setNewUrgency(e.target.value)}
+                  className="w-full px-3 py-2 bg-cursor-bg border border-cursor-border rounded-md text-cursor-text focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="LOW">Low Urgency</option>
+                  <option value="MEDIUM">Medium Urgency</option>
+                  <option value="HIGH">High Urgency</option>
+                </select>
+              </div>
+            </div>
+            <Button type="submit" variant="primary" className="w-full">
               Add Task
             </Button>
           </form>
@@ -203,30 +270,42 @@ const Tasks = ({ user, onLogout }) => {
                   key={task.id}
                   className="flex flex-col gap-2 p-4 bg-cursor-bg border border-cursor-border rounded-md hover:border-cursor-text-muted transition-colors"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-start gap-3">
                     <input
                       type="checkbox"
-                      checked={task.completed}
+                      checked={task.completed || false}
                       onChange={() => handleToggleTask(task.id)}
-                      className="w-5 h-5 rounded border-cursor-border text-blue-600 focus:ring-blue-500"
+                      className="w-5 h-5 rounded border-cursor-border text-blue-600 focus:ring-blue-500 mt-1"
                     />
-                    <span
-                      className={`flex-1 text-cursor-text ${
-                        task.completed ? 'line-through text-cursor-text-muted' : ''
-                      }`}
-                    >
-                      {task.text}
-                    </span>
-                  </div>
-                  {(task.deadlineDate || task.deadlineTime) && (
-                    <div className="text-sm text-cursor-text-muted">
-                      Deadline:{' '}
-                      <span className="text-cursor-text">
-                        {task.deadlineDate || ''}{' '}
-                        {task.deadlineTime || ''}
-                      </span>
+                    <div className="flex-1">
+                      <h3
+                        className={`text-lg font-semibold text-cursor-text ${
+                          task.completed ? 'line-through text-cursor-text-muted' : ''
+                        }`}
+                      >
+                        {task.title}
+                      </h3>
+                      {task.description && (
+                        <p className={`text-sm text-cursor-text-muted mt-1 ${
+                          task.completed ? 'line-through' : ''
+                        }`}>
+                          {task.description}
+                        </p>
+                      )}
+                      <div className="flex flex-wrap items-center gap-3 mt-2 text-sm">
+                        {task.dueDate && (
+                          <span className="text-cursor-text-muted">
+                            Due: <span className="text-cursor-text">{formatDateForDisplay(task.dueDate)}</span>
+                          </span>
+                        )}
+                        {task.urgency && (
+                          <span className={`font-medium ${getUrgencyColor(task.urgency)}`}>
+                            {task.urgency}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  )}
+                  </div>
                   <div className="flex justify-end gap-2">
                     <Button
                       variant="secondary"
@@ -259,38 +338,54 @@ const Tasks = ({ user, onLogout }) => {
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-cursor-text mb-2">
-              Task
+              Title *
             </label>
             <input
               type="text"
-              value={editText}
-              onChange={(e) => setEditText(e.target.value)}
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
               className="w-full px-4 py-2 bg-cursor-bg border border-cursor-border rounded-md text-cursor-text placeholder-cursor-text-muted focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Update task text..."
+              placeholder="Task title"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-cursor-text mb-2">
+              Description
+            </label>
+            <textarea
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              rows={3}
+              className="w-full px-4 py-2 bg-cursor-bg border border-cursor-border rounded-md text-cursor-text placeholder-cursor-text-muted focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+              placeholder="Task description"
             />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-cursor-text mb-2">
-                Deadline Date
+                Due Date & Time
               </label>
               <input
-                type="date"
-                value={editDeadlineDate}
-                onChange={(e) => setEditDeadlineDate(e.target.value)}
+                type="datetime-local"
+                value={editDueDate}
+                onChange={(e) => setEditDueDate(e.target.value)}
                 className="w-full px-3 py-2 bg-cursor-bg border border-cursor-border rounded-md text-cursor-text focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-cursor-text mb-2">
-                Deadline Time
+                Urgency
               </label>
-              <input
-                type="time"
-                value={editDeadlineTime}
-                onChange={(e) => setEditDeadlineTime(e.target.value)}
+              <select
+                value={editUrgency}
+                onChange={(e) => setEditUrgency(e.target.value)}
                 className="w-full px-3 py-2 bg-cursor-bg border border-cursor-border rounded-md text-cursor-text focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
+              >
+                <option value="LOW">Low</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HIGH">High</option>
+              </select>
             </div>
           </div>
           <div className="flex gap-3 pt-4">
@@ -308,4 +403,3 @@ const Tasks = ({ user, onLogout }) => {
 }
 
 export default Tasks
-

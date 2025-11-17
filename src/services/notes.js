@@ -3,7 +3,7 @@ import api from './api'
 export const notesService = {
   // Get all notes
   getAll: async () => {
-    const response = await api.get('/notes')
+    const response = await api.get('/api/notes')
     if (response.error) {
       return { success: false, error: response.error, data: [] }
     }
@@ -12,7 +12,7 @@ export const notesService = {
 
   // Get single note
   getById: async (id) => {
-    const response = await api.get(`/notes/${id}`)
+    const response = await api.get(`/api/notes/${id}`)
     if (response.error) {
       return { success: false, error: response.error }
     }
@@ -21,7 +21,7 @@ export const notesService = {
 
   // Create note
   create: async (noteData) => {
-    const response = await api.post('/notes', noteData)
+    const response = await api.post('/api/notes', noteData)
     if (response.error) {
       return { success: false, error: response.error }
     }
@@ -30,7 +30,7 @@ export const notesService = {
 
   // Update note
   update: async (id, noteData) => {
-    const response = await api.put(`/notes/${id}`, noteData)
+    const response = await api.put(`/api/notes/${id}`, noteData)
     if (response.error) {
       return { success: false, error: response.error }
     }
@@ -39,7 +39,7 @@ export const notesService = {
 
   // Delete note
   delete: async (id) => {
-    const response = await api.delete(`/notes/${id}`)
+    const response = await api.delete(`/api/notes/${id}`)
     if (response.error) {
       return { success: false, error: response.error }
     }

@@ -4,7 +4,7 @@ import { STORAGE_KEYS } from '../utils/constants'
 export const authService = {
   // Login
   login: async (email, password) => {
-    const response = await api.post('/auth/login', { email, password })
+    const response = await api.post('/api/users/login', { email, password })
     if (response.error) {
       return { success: false, error: response.error }
     }
@@ -22,7 +22,7 @@ export const authService = {
 
   // Register
   register: async (name, email, password) => {
-    const response = await api.post('/auth/register', { name, email, password })
+    const response = await api.post('/api/users/register', { name, email, password })
     if (response.error) {
       return { success: false, error: response.error }
     }

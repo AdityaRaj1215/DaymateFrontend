@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import Card from '../components/Card'
 import Button from '../components/Button'
 import LoadingSpinner from '../components/LoadingSpinner'
-import Modal from '../components/Modal'
 import NavMenu from '../components/NavMenu'
 import { notesService } from '../services/notes'
 import { tasksService } from '../services/tasks'
@@ -17,7 +16,7 @@ const Notes = ({ user, onLogout }) => {
   const [noteTags, setNoteTags] = useState('')
   const [linkedTaskId, setLinkedTaskId] = useState('')
   const [isEditing, setIsEditing] = useState(false)
-  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [isNotepadOpen, setIsNotepadOpen] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -47,23 +46,34 @@ const Notes = ({ user, onLogout }) => {
     }
   }
 
-  const handleCreateNote = () => {
-    setShowCreateModal(false)
+  const openNotepadForNew = () => {
     setSelectedNote(null)
     setNoteTitle('')
     setNoteContent('')
     setNoteTags('')
     setLinkedTaskId('')
     setIsEditing(true)
+    setIsNotepadOpen(true)
   }
 
-  const handleSelectNote = (note) => {
+  const openNotepadForNote = (note) => {
     setSelectedNote(note)
     setNoteTitle(note.title)
     setNoteContent(note.content || '')
     setNoteTags(note.tags || '')
     setLinkedTaskId(note.linkedTaskId || '')
     setIsEditing(false)
+    setIsNotepadOpen(true)
+  }
+
+  const closeNotepad = () => {
+    setIsNotepadOpen(false)
+    setSelectedNote(null)
+    setIsEditing(false)
+    setNoteTitle('')
+    setNoteContent('')
+    setNoteTags('')
+    setLinkedTaskId('')
   }
 
   const handleSaveNote = async () => {
@@ -82,12 +92,7 @@ const Notes = ({ user, onLogout }) => {
         const result = await notesService.update(selectedNote.id, noteData)
         if (result.success) {
           setNotes(notes.map(n => n.id === selectedNote.id ? result.data : n))
-          setIsEditing(false)
-          setSelectedNote(null)
-          setNoteTitle('')
-          setNoteContent('')
-          setNoteTags('')
-          setLinkedTaskId('')
+          closeNotepad()
         } else {
           alert('Failed to update note. Please try again.')
         }
@@ -96,12 +101,7 @@ const Notes = ({ user, onLogout }) => {
         const result = await notesService.create(noteData)
         if (result.success) {
           setNotes([result.data, ...notes])
-          setIsEditing(false)
-          setSelectedNote(null)
-          setNoteTitle('')
-          setNoteContent('')
-          setNoteTags('')
-          setLinkedTaskId('')
+          closeNotepad()
         } else {
           alert('Failed to create note. Please try again.')
         }
@@ -118,12 +118,7 @@ const Notes = ({ user, onLogout }) => {
       if (result.success) {
         setNotes(notes.filter(n => n.id !== id))
         if (selectedNote && selectedNote.id === id) {
-          setSelectedNote(null)
-          setNoteTitle('')
-          setNoteContent('')
-          setNoteTags('')
-          setLinkedTaskId('')
-          setIsEditing(false)
+          closeNotepad()
         }
       } else {
         alert('Failed to delete note. Please try again.')
@@ -139,18 +134,14 @@ const Notes = ({ user, onLogout }) => {
   }
 
   const handleCancel = () => {
-    setIsEditing(false)
     if (selectedNote) {
       setNoteTitle(selectedNote.title)
       setNoteContent(selectedNote.content || '')
       setNoteTags(selectedNote.tags || '')
       setLinkedTaskId(selectedNote.linkedTaskId || '')
+      setIsEditing(false)
     } else {
-      setNoteTitle('')
-      setNoteContent('')
-      setNoteTags('')
-      setLinkedTaskId('')
-      setSelectedNote(null)
+      closeNotepad()
     }
   }
 
@@ -185,9 +176,9 @@ const Notes = ({ user, onLogout }) => {
           {notes.map((note) => (
             <div
               key={note.id}
-              onClick={() => handleSelectNote(note)}
+              onClick={() => openNotepadForNote(note)}
               className={`aspect-square bg-cursor-surface border border-cursor-border rounded-lg p-4 cursor-pointer transition-all hover:border-accent-orange hover:shadow-lg flex flex-col ${
-                selectedNote?.id === note.id ? 'border-accent-orange ring-2 ring-accent-orange' : ''
+                selectedNote?.id === note.id && isNotepadOpen ? 'border-accent-orange ring-2 ring-accent-orange' : ''
               }`}
             >
               {/* Title at top in bigger font */}
@@ -232,132 +223,123 @@ const Notes = ({ user, onLogout }) => {
 
         {/* Floating Action Button */}
         <button
-          onClick={() => setShowCreateModal(true)}
+          onClick={openNotepadForNew}
           className="fixed bottom-8 right-8 w-14 h-14 bg-accent-orange hover:bg-orange-600 text-white rounded-full shadow-lg flex items-center justify-center text-2xl font-bold transition-all hover:scale-110 z-40"
         >
           +
         </button>
 
-        {/* Create Modal */}
-        <Modal
-          isOpen={showCreateModal}
-          onClose={() => setShowCreateModal(false)}
-          title="Create New Note"
-        >
-          <div className="space-y-4">
-            <Button
-              variant="primary"
-              onClick={handleCreateNote}
-              className="w-full py-3 text-lg"
-            >
-              New Note
-            </Button>
-          </div>
-        </Modal>
-
-        {/* Editor Modal */}
-        <Modal
-          isOpen={isEditing || selectedNote !== null}
-          onClose={handleCancel}
-          title={isEditing ? (selectedNote ? 'Edit Note' : 'Create New Note') : 'View Note'}
-        >
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-cursor-text mb-2">
-                Title *
-              </label>
-              <input
-                type="text"
-                value={noteTitle}
-                onChange={(e) => setNoteTitle(e.target.value)}
-                placeholder="Enter title..."
-                className="w-full px-4 py-2 bg-cursor-bg border border-cursor-border rounded-md text-cursor-text placeholder-cursor-text-muted focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                disabled={!isEditing}
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-cursor-text mb-2">
-                Content
-              </label>
-              <textarea
-                value={noteContent}
-                onChange={(e) => setNoteContent(e.target.value)}
-                placeholder="Enter content..."
-                rows={6}
-                className="w-full px-4 py-2 bg-cursor-bg border border-cursor-border rounded-md text-cursor-text placeholder-cursor-text-muted focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                disabled={!isEditing}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-cursor-text mb-2">
-                Tags (comma-separated)
-              </label>
-              <input
-                type="text"
-                value={noteTags}
-                onChange={(e) => setNoteTags(e.target.value)}
-                placeholder="e.g., meeting, planning, important"
-                className="w-full px-4 py-2 bg-cursor-bg border border-cursor-border rounded-md text-cursor-text placeholder-cursor-text-muted focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                disabled={!isEditing}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-cursor-text mb-2">
-                Link to Task (optional)
-              </label>
-              <select
-                value={linkedTaskId}
-                onChange={(e) => setLinkedTaskId(e.target.value)}
-                className="w-full px-4 py-2 bg-cursor-bg border border-cursor-border rounded-md text-cursor-text focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                disabled={!isEditing}
-              >
-                <option value="">No task linked</option>
-                {tasks.map(task => (
-                  <option key={task.id} value={task.id}>
-                    {task.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {selectedNote && !isEditing && selectedNote.linkedTask && (
-              <div className="p-3 bg-cursor-bg border border-cursor-border rounded-md">
-                <p className="text-sm text-cursor-text-muted mb-1">Linked Task:</p>
-                <p className="text-cursor-text font-medium">{selectedNote.linkedTask.title}</p>
-              </div>
-            )}
-
-            <div className="flex gap-3 pt-4">
-              {isEditing ? (
-                <>
-                  <Button variant="primary" onClick={handleSaveNote} className="flex-1">
-                    Save
-                  </Button>
-                  <Button variant="secondary" onClick={handleCancel} className="flex-1">
-                    Cancel
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button variant="primary" onClick={handleEditNote} className="flex-1">
-                    Edit
-                  </Button>
-                  <Button
-                    variant="danger"
-                    onClick={() => handleDeleteNote(selectedNote.id)}
-                    className="flex-1"
+        {/* Notepad Overlay */}
+        {isNotepadOpen && (
+          <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4 py-8">
+            <div className="relative w-full max-w-3xl bg-[#fffaf0] text-gray-900 rounded-2xl shadow-2xl border-4 border-yellow-200 overflow-hidden">
+              <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-transparent via-transparent to-yellow-100 opacity-80" />
+              <div className="relative p-6 space-y-4">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold text-gray-800">
+                    {selectedNote ? (isEditing ? 'Edit Note' : 'View Note') : 'New Note'}
+                  </h2>
+                  <button
+                    onClick={closeNotepad}
+                    className="text-gray-500 hover:text-gray-800 text-2xl leading-none"
+                    aria-label="Close notepad"
                   >
-                    Delete
-                  </Button>
-                </>
-              )}
+                    ×
+                  </button>
+                </div>
+
+                <div>
+                  <input
+                    type="text"
+                    value={noteTitle}
+                    onChange={(e) => setNoteTitle(e.target.value)}
+                    placeholder="Note Title"
+                    className={`w-full bg-transparent border-b-2 border-dashed border-yellow-500 pb-2 text-2xl font-bold focus:outline-none ${!isEditing ? 'pointer-events-none text-gray-500' : ''}`}
+                    disabled={!isEditing}
+                  />
+                </div>
+
+                <div>
+                  <textarea
+                    value={noteContent}
+                    onChange={(e) => setNoteContent(e.target.value)}
+                    placeholder="Start writing your note..."
+                    rows={10}
+                    className={`w-full bg-transparent border border-yellow-200 rounded-xl p-4 focus:outline-none focus:ring-2 focus:ring-yellow-400 notepad-lines ${!isEditing ? 'pointer-events-none text-gray-600' : ''}`}
+                    disabled={!isEditing}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600 mb-1">
+                      Tags (comma-separated)
+                    </label>
+                    <input
+                      type="text"
+                      value={noteTags}
+                      onChange={(e) => setNoteTags(e.target.value)}
+                      placeholder="idea, meeting, planning"
+                      className={`w-full bg-transparent border border-yellow-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400 ${!isEditing ? 'pointer-events-none text-gray-600' : ''}`}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600 mb-1">
+                      Link to Task
+                    </label>
+                    <select
+                      value={linkedTaskId}
+                      onChange={(e) => setLinkedTaskId(e.target.value)}
+                      className={`w-full bg-transparent border border-yellow-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400 ${!isEditing ? 'pointer-events-none text-gray-600' : ''}`}
+                      disabled={!isEditing}
+                    >
+                      <option value="">No task linked</option>
+                      {tasks.map(task => (
+                        <option key={task.id} value={task.id}>
+                          {task.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {selectedNote && !isEditing && selectedNote.linkedTask && (
+                  <div className="bg-white/70 border border-yellow-200 rounded-lg p-3 text-sm text-gray-700">
+                    <p className="font-semibold mb-1">Linked Task:</p>
+                    <p>{selectedNote.linkedTask.title}</p>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-3 pt-2">
+                  {isEditing ? (
+                    <>
+                      <Button variant="primary" onClick={handleSaveNote} className="flex-1">
+                        Save
+                      </Button>
+                      <Button variant="secondary" onClick={handleCancel} className="flex-1">
+                        Cancel
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button variant="primary" onClick={handleEditNote} className="flex-1">
+                        Edit
+                      </Button>
+                      <Button
+                        variant="danger"
+                        onClick={() => handleDeleteNote(selectedNote.id)}
+                        className="flex-1"
+                      >
+                        Delete
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-        </Modal>
+        )}
       </div>
     </div>
   )

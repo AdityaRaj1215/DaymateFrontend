@@ -232,16 +232,15 @@ const Notes = ({ user, onLogout }) => {
         {/* Notepad Overlay */}
         {isNotepadOpen && (
           <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4 py-8">
-            <div className="relative w-full max-w-3xl bg-[#fffaf0] text-gray-900 rounded-2xl shadow-2xl border-4 border-yellow-200 overflow-hidden">
-              <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-transparent via-transparent to-yellow-100 opacity-80" />
+            <div className="relative w-full max-w-3xl bg-cursor-surface text-cursor-text rounded-2xl shadow-2xl border border-cursor-border overflow-hidden">
               <div className="relative p-6 space-y-4">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold text-gray-800">
+                  <h2 className="text-2xl font-bold text-cursor-text">
                     {selectedNote ? (isEditing ? 'Edit Note' : 'View Note') : 'New Note'}
                   </h2>
                   <button
                     onClick={closeNotepad}
-                    className="text-gray-500 hover:text-gray-800 text-2xl leading-none"
+                    className="text-cursor-text-muted hover:text-white text-2xl leading-none"
                     aria-label="Close notepad"
                   >
                     ×
@@ -254,7 +253,7 @@ const Notes = ({ user, onLogout }) => {
                     value={noteTitle}
                     onChange={(e) => setNoteTitle(e.target.value)}
                     placeholder="Note Title"
-                    className={`w-full bg-transparent border-b-2 border-dashed border-yellow-500 pb-2 text-2xl font-bold focus:outline-none ${!isEditing ? 'pointer-events-none text-gray-500' : ''}`}
+                    className={`w-full bg-transparent border-b-2 border-dashed border-cursor-border pb-2 text-2xl font-bold focus:outline-none focus:border-blue-500 ${!isEditing ? 'pointer-events-none text-cursor-text-muted' : ''}`}
                     disabled={!isEditing}
                   />
                 </div>
@@ -265,14 +264,14 @@ const Notes = ({ user, onLogout }) => {
                     onChange={(e) => setNoteContent(e.target.value)}
                     placeholder="Start writing your note..."
                     rows={10}
-                    className={`w-full bg-transparent border border-yellow-200 rounded-xl p-4 focus:outline-none focus:ring-2 focus:ring-yellow-400 notepad-lines ${!isEditing ? 'pointer-events-none text-gray-600' : ''}`}
+                    className={`w-full bg-transparent border border-cursor-border rounded-xl p-4 focus:outline-none focus:ring-2 focus:ring-blue-500 notepad-lines ${!isEditing ? 'pointer-events-none text-cursor-text-muted' : ''}`}
                     disabled={!isEditing}
                   />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1">
+                    <label className="block text-sm font-medium text-cursor-text-muted mb-1">
                       Tags (comma-separated)
                     </label>
                     <input
@@ -280,18 +279,18 @@ const Notes = ({ user, onLogout }) => {
                       value={noteTags}
                       onChange={(e) => setNoteTags(e.target.value)}
                       placeholder="idea, meeting, planning"
-                      className={`w-full bg-transparent border border-yellow-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400 ${!isEditing ? 'pointer-events-none text-gray-600' : ''}`}
+                      className={`w-full bg-transparent border border-cursor-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${!isEditing ? 'pointer-events-none text-cursor-text-muted' : ''}`}
                       disabled={!isEditing}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1">
+                    <label className="block text-sm font-medium text-cursor-text-muted mb-1">
                       Link to Task
                     </label>
                     <select
                       value={linkedTaskId}
                       onChange={(e) => setLinkedTaskId(e.target.value)}
-                      className={`w-full bg-transparent border border-yellow-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400 ${!isEditing ? 'pointer-events-none text-gray-600' : ''}`}
+                      className={`w-full bg-transparent border border-cursor-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${!isEditing ? 'pointer-events-none text-cursor-text-muted' : ''}`}
                       disabled={!isEditing}
                     >
                       <option value="">No task linked</option>
@@ -305,8 +304,8 @@ const Notes = ({ user, onLogout }) => {
                 </div>
 
                 {selectedNote && !isEditing && selectedNote.linkedTask && (
-                  <div className="bg-white/70 border border-yellow-200 rounded-lg p-3 text-sm text-gray-700">
-                    <p className="font-semibold mb-1">Linked Task:</p>
+                  <div className="bg-cursor-bg border border-cursor-border rounded-lg p-3 text-sm text-cursor-text">
+                    <p className="font-semibold mb-1 text-cursor-text-muted">Linked Task:</p>
                     <p>{selectedNote.linkedTask.title}</p>
                   </div>
                 )}
